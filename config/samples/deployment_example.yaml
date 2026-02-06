@@ -1,0 +1,140 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: production
+  annotations:
+    # ═══════════════════════════════════════════════════════════
+    # LOOKOUT - Core Configuration
+    # ═══════════════════════════════════════════════════════════
+    lookout.dev/enabled: "true"
+    lookout.dev/registry: "lookout-system/ecr-production"
+
+    # ═══════════════════════════════════════════════════════════
+    # LOOKOUT - Policy Configuration
+    # ═══════════════════════════════════════════════════════════
+    lookout.dev/policy: "semver"
+    lookout.dev/semver-range: ">=1.0.0 <2.0.0"
+    lookout.dev/tag-pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+    lookout.dev/exclude-tags: "dev,test,*-rc*,*-beta*"
+
+    # ═══════════════════════════════════════════════════════════
+    # LOOKOUT - Update Strategy
+    # ═══════════════════════════════════════════════════════════
+    lookout.dev/strategy: "tag+digest"
+    lookout.dev/interval: "5m"
+
+    # ═══════════════════════════════════════════════════════════
+    # LOOKOUT - Safety Controls
+    # ═══════════════════════════════════════════════════════════
+    lookout.dev/auto-rollback: "true"
+    lookout.dev/rollback-timeout: "5m"
+    lookout.dev/maintenance-window: "02:00-06:00"
+    lookout.dev/maintenance-days: "Sat,Sun"
+    lookout.dev/maintenance-tz: "Europe/Istanbul"
+
+    # ═══════════════════════════════════════════════════════════
+    # LOOKOUT - Notifications
+    # ═══════════════════════════════════════════════════════════
+    lookout.dev/notify-slack: "#deployments"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: app
+          image: 585226265632.dkr.ecr.eu-west-1.amazonaws.com/my-app:v1.0.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+# Example: Multi-container with different policies per container
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: production
+  annotations:
+    lookout.dev/enabled: "true"
+
+    # Container: app - Semver policy
+    lookout.dev/container.app.enabled: "true"
+    lookout.dev/container.app.registry: "lookout-system/ecr-production"
+    lookout.dev/container.app.policy: "semver"
+    lookout.dev/container.app.semver-range: ">=1.0.0"
+
+    # Container: nginx - Latest alpine tag
+    lookout.dev/container.nginx.enabled: "true"
+    lookout.dev/container.nginx.registry: "lookout-system/dockerhub-public"
+    lookout.dev/container.nginx.policy: "latest"
+    lookout.dev/container.nginx.tag-pattern: "^[0-9]+\\.[0-9]+-alpine$"
+
+    # Container: sidecar - Digest only (immutable)
+    lookout.dev/container.sidecar.enabled: "true"
+    lookout.dev/container.sidecar.registry: "lookout-system/ecr-production"
+    lookout.dev/container.sidecar.strategy: "digest"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+    spec:
+      containers:
+        - name: app
+          image: 585226265632.dkr.ecr.eu-west-1.amazonaws.com/web-app:v1.0.0
+          ports:
+            - containerPort: 8080
+        - name: nginx
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+        - name: sidecar
+          image: 585226265632.dkr.ecr.eu-west-1.amazonaws.com/sidecar:v1.0.0
+---
+# Example: StatefulSet with approval required
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: production
+  annotations:
+    lookout.dev/enabled: "true"
+    lookout.dev/registry: "lookout-system/ecr-production"
+    lookout.dev/policy: "semver"
+    lookout.dev/semver-range: ">=15.0.0 <16.0.0"
+
+    # Require manual approval for database updates
+    lookout.dev/approval-required: "true"
+    lookout.dev/notify-slack: "#dba-team"
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: 585226265632.dkr.ecr.eu-west-1.amazonaws.com/postgres:15.2
+          ports:
+            - containerPort: 5432

@@ -1,0 +1,62 @@
+apiVersion: registry.lookout.dev/v1alpha1
+kind: ImageRegistry
+metadata:
+  name: harbor-internal
+  namespace: lookout-system
+spec:
+  # Registry Type
+  type: harbor
+
+  # Harbor Configuration
+  harbor:
+    url: https://harbor.company.com
+    project: my-project
+    insecureSkipVerify: false
+
+  # Authentication - Using Secret
+  auth:
+    secretRef:
+      name: harbor-credentials
+      # namespace: lookout-system  # Optional, defaults to ImageRegistry namespace
+
+  # Rate Limiting
+  rateLimiting:
+    requestsPerSecond: 5
+    burst: 10
+
+  # Circuit Breaker
+  circuitBreaker:
+    enabled: true
+    failureThreshold: 3
+    timeout: "3m"
+
+  # TLS Configuration (if using self-signed certs)
+  tls:
+    insecureSkipVerify: false
+    caSecretRef:
+      name: harbor-ca-cert
+      key: ca.crt
+
+  # Scan Configuration
+  scan:
+    minInterval: "2m"
+    defaultInterval: "5m"
+    tagLimit: 50
+---
+# Secret for Harbor authentication
+apiVersion: v1
+kind: Secret
+metadata:
+  name: harbor-credentials
+  namespace: lookout-system
+type: kubernetes.io/dockerconfigjson
+stringData:
+  .dockerconfigjson: |
+    {
+      "auths": {
+        "harbor.company.com": {
+          "username": "robot$lookout",
+          "password": "your-robot-account-token"
+        }
+      }
+    }

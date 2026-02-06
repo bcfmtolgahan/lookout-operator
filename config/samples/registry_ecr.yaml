@@ -1,0 +1,37 @@
+apiVersion: registry.lookout.dev/v1alpha1
+kind: ImageRegistry
+metadata:
+  name: ecr-production
+  namespace: lookout-system
+spec:
+  # Registry Type
+  type: ecr
+
+  # ECR Configuration
+  ecr:
+    region: eu-west-1
+    accountId: "585226265632"  # Optional, auto-detected if using IRSA
+
+  # Authentication - Using IRSA (recommended for EKS)
+  auth:
+    workloadIdentity:
+      enabled: true
+
+  # Rate Limiting
+  rateLimiting:
+    requestsPerSecond: 10
+    burst: 20
+
+  # Circuit Breaker
+  circuitBreaker:
+    enabled: true
+    failureThreshold: 5
+    successThreshold: 2
+    timeout: "5m"
+
+  # Scan Configuration
+  scan:
+    minInterval: "1m"
+    defaultInterval: "5m"
+    tagLimit: 100
+    sortBy: pushedAt

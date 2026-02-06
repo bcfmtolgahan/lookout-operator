@@ -745,7 +745,7 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
-        image: 585226265632.dkr.ecr.eu-west-1.amazonaws.com/lookout-operator:v0.1.0
+        image: ghcr.io/bcfmtolgahan/lookout-operator:v1.0.0
         livenessProbe:
           httpGet:
             path: /healthz

@@ -22,11 +22,12 @@ Lookout is a Kubernetes operator that watches container registries for new image
 ### 1. Install the Operator
 
 ```bash
-# Install CRDs
-make install
+# One-line installation (recommended)
+kubectl apply -f https://raw.githubusercontent.com/bcfmtolgahan/lookout-operator/v1.0.0/install.yaml
 
-# Deploy the operator
-make deploy IMG=<your-registry>/lookout:latest
+# Or build from source
+make install
+make deploy IMG=ghcr.io/bcfmtolgahan/lookout-operator:v1.0.0
 ```
 
 ### 2. Create an ImageRegistry
@@ -38,13 +39,16 @@ metadata:
   name: ecr-production
   namespace: lookout-system
 spec:
-  type: ecr
+  type: ecr  # must be lowercase
   ecr:
     region: eu-west-1
+    accountId: "123456789012"  # Note: accountId not accountID
   auth:
     workloadIdentity:
-      enabled: true
+      enabled: true  # Uses IRSA for authentication
 ```
+
+> **Note**: For IRSA authentication, ensure your ServiceAccount has the `eks.amazonaws.com/role-arn` annotation pointing to an IAM role with ECR read permissions.
 
 ### 3. Annotate Your Workloads
 
